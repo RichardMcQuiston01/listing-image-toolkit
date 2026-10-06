@@ -1,0 +1,138 @@
+{
+  "name": "@richardmcquiston01/listing-image-toolkit",
+  "version": "0.1.0",
+  "description": "Browser canvas toolkit for marketplace listing images: hero and Instagram templates, photo placement, crop and thumbnail guides, background removal, PSD layer import, and size-optimised export. Runs entirely client-side.",
+  "keywords": [
+    "canvas",
+    "image",
+    "listing",
+    "marketplace",
+    "etsy",
+    "instagram",
+    "template",
+    "crop",
+    "background-removal",
+    "psd",
+    "thumbnail",
+    "jpeg",
+    "browser"
+  ],
+  "license": "Apache-2.0",
+  "author": "Richard McQuiston (https://richardmcquiston.com/)",
+  "homepage": "https://github.com/RichardMcQuiston01/listing-image-toolkit#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RichardMcQuiston01/listing-image-toolkit.git"
+  },
+  "bugs": {
+    "url": "https://github.com/RichardMcQuiston01/listing-image-toolkit/issues"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./render": {
+      "import": {
+        "types": "./dist/render.d.ts",
+        "default": "./dist/render.js"
+      },
+      "require": {
+        "types": "./dist/render.d.cts",
+        "default": "./dist/render.cjs"
+      }
+    },
+    "./export": {
+      "import": {
+        "types": "./dist/export.d.ts",
+        "default": "./dist/export.js"
+      },
+      "require": {
+        "types": "./dist/export.d.cts",
+        "default": "./dist/export.cjs"
+      }
+    },
+    "./crop": {
+      "import": {
+        "types": "./dist/crop.d.ts",
+        "default": "./dist/crop.js"
+      },
+      "require": {
+        "types": "./dist/crop.d.cts",
+        "default": "./dist/crop.cjs"
+      }
+    },
+    "./background-removal": {
+      "import": {
+        "types": "./dist/background-removal.d.ts",
+        "default": "./dist/background-removal.js"
+      },
+      "require": {
+        "types": "./dist/background-removal.d.cts",
+        "default": "./dist/background-removal.cjs"
+      }
+    },
+    "./psd-layers": {
+      "import": {
+        "types": "./dist/psd-layers.d.ts",
+        "default": "./dist/psd-layers.js"
+      },
+      "require": {
+        "types": "./dist/psd-layers.d.cts",
+        "default": "./dist/psd-layers.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "engines": {
+    "node": ">=18",
+    "bun": ">=1.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "bun test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "changeset": "changeset",
+    "version-packages": "changeset version"
+  },
+  "peerDependencies": {
+    "ag-psd": ">=31"
+  },
+  "peerDependenciesMeta": {
+    "ag-psd": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@changesets/cli": "^3.0.3",
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^26.6.4",
+    "ag-psd": "^31.0.2",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "tsup": "^8.5.1",
+    "typescript": "~6.0.2",
+    "typescript-eslint": "^8.71.1"
+  }
+}
