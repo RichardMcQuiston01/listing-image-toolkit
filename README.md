@@ -223,7 +223,7 @@ pull requests into `dev`; `dev` is merged to `main` for a release.
 2. On `dev`, run `bun run version-packages` to apply the changesets (version
    bump and `CHANGELOG.md`), commit, and merge `dev` into `main`.
 3. Tag `main` with the new version and push the tag, e.g.
-   `git tag v0.2.0 && git push origin v0.2.0`.
+   `git tag v0.1.0 && git push origin v0.1.0`.
 
 The `Release` workflow then builds, tests and runs
 `npm publish --provenance --access public`. It needs an npm automation token
