@@ -53,6 +53,21 @@ export const DEFAULT_PHOTO_PLACEMENT: PhotoPlacement = {
 };
 
 /**
+ * What fills the parts of the photo frame the photo doesn't cover (zoomed
+ * out, e.g. "fit whole photo", or moved): plain white, or a blurred copy of
+ * the photo itself scaled to fill the frame.
+ */
+export type PhotoBackdrop = 'white' | 'blur';
+
+export const DEFAULT_PHOTO_BACKDROP: PhotoBackdrop = 'white';
+
+/** Blur radius of the 'blur' backdrop, as a fraction of the frame's longer side. */
+export const PHOTO_BACKDROP_BLUR_FRACTION = 0.03;
+
+/** A light white veil over the blurred backdrop, so the photo stays in front. */
+export const PHOTO_BACKDROP_VEIL_OPACITY = 0.15;
+
+/**
  * The machine render's size and position on the Etsy hero, saved per machine.
  * scale 1 is the PSD's size (fitted into its top-left box); it grows and
  * shrinks from its top-left corner, so it stays tucked into the corner.
@@ -76,6 +91,8 @@ export const MAX_PHOTO_ZOOM = 4;
 export interface EtsyHeroInput {
   readonly photo: ImageSource | null;
   readonly photoPlacement: PhotoPlacement;
+  /** Fill for the frame outside the photo; DEFAULT_PHOTO_BACKDROP ('white') if omitted. */
+  readonly photoBackdrop?: PhotoBackdrop;
   readonly headline: string;
   /** Machine render drawn top-left, overlapping the title bar. */
   readonly machineImage: ImageSource | null;
@@ -125,6 +142,8 @@ export interface InstagramPostStyle {
 export interface InstagramPostInput {
   readonly photo: ImageSource | null;
   readonly photoPlacement: PhotoPlacement;
+  /** Fill for the frame outside the photo; DEFAULT_PHOTO_BACKDROP ('white') if omitted. */
+  readonly photoBackdrop?: PhotoBackdrop;
   readonly headline: string;
   readonly subtitle: string;
   /** Pre-formatted, e.g. "$20". Empty hides the price chip. */
@@ -263,6 +282,37 @@ export function placePhoto(
     width,
     height,
   };
+}
+
+/** The 'blur' backdrop's blur radius in pixels for a frame. */
+export function photoBackdropBlurRadius(box: Rect): number {
+  return Math.max(
+    1,
+    Math.round(Math.max(box.width, box.height) * PHOTO_BACKDROP_BLUR_FRACTION)
+  );
+}
+
+/**
+ * Where to draw the blurred backdrop copy of a photo: covering `box`, centred,
+ * and grown by twice the blur radius on every side, so the blur's faded edges
+ * fall outside the frame instead of showing as a pale rim.
+ */
+export function photoBackdropRect(
+  source: CanvasSize,
+  box: Rect,
+  blurRadius: number
+): Rect {
+  const margin: number = Math.max(0, blurRadius) * 2;
+  return fitRect(
+    source,
+    {
+      x: box.x - margin,
+      y: box.y - margin,
+      width: box.width + margin * 2,
+      height: box.height + margin * 2,
+    },
+    'cover'
+  );
 }
 
 /**
@@ -466,7 +516,8 @@ function drawPhoto(
   ctx: Context,
   photo: ImageSource | null,
   box: Rect,
-  placement: PhotoPlacement
+  placement: PhotoPlacement,
+  backdrop: PhotoBackdrop
 ): void {
   if (photo === null) {
     ctx.fillStyle = PHOTO_PLACEHOLDER;
@@ -478,9 +529,12 @@ function drawPhoto(
   ctx.rect(box.x, box.y, box.width, box.height);
   ctx.clip();
   // Anywhere the photo doesn't reach (zoomed out or moved) reads as part of
-  // a white product shot.
+  // a white product shot, or of a blurred copy of the photo behind it.
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(box.x, box.y, box.width, box.height);
+  if (backdrop === 'blur') {
+    drawBlurredBackdrop(ctx, photo, box);
+  }
   const target: Rect = placePhoto(
     sizeOf(photo),
     box,
@@ -488,6 +542,68 @@ function drawPhoto(
   );
   ctx.drawImage(photo, target.x, target.y, target.width, target.height);
   ctx.restore();
+}
+
+/**
+ * A blurred copy of the photo covering `box`. Uses the canvas `filter` where
+ * supported (Chrome, Firefox, Safari 18+); elsewhere it draws the photo tiny
+ * on a scratch canvas and scales it back up, which smoothing turns into a
+ * comparable blur. With neither, the white fill underneath is left as is.
+ */
+function drawBlurredBackdrop(
+  ctx: Context,
+  photo: ImageSource,
+  box: Rect
+): void {
+  const radius: number = photoBackdropBlurRadius(box);
+  const rect: Rect = photoBackdropRect(sizeOf(photo), box, radius);
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (typeof ctx.filter === 'string') {
+    ctx.filter = `blur(${radius}px)`;
+    ctx.drawImage(photo, rect.x, rect.y, rect.width, rect.height);
+    ctx.filter = 'none';
+  } else {
+    const small: CanvasImageSource | null = downscaledCopy(
+      photo,
+      Math.max(1, Math.round(rect.width / radius)),
+      Math.max(1, Math.round(rect.height / radius))
+    );
+    if (small === null) {
+      ctx.restore();
+      return;
+    }
+    ctx.drawImage(small, rect.x, rect.y, rect.width, rect.height);
+  }
+  ctx.fillStyle = `rgba(255, 255, 255, ${PHOTO_BACKDROP_VEIL_OPACITY})`;
+  ctx.fillRect(box.x, box.y, box.width, box.height);
+  ctx.restore();
+}
+
+/** The photo drawn at width×height on a scratch canvas; null without one. */
+function downscaledCopy(
+  photo: ImageSource,
+  width: number,
+  height: number
+): CanvasImageSource | null {
+  let canvas: OffscreenCanvas | HTMLCanvasElement;
+  if (typeof OffscreenCanvas !== 'undefined') {
+    canvas = new OffscreenCanvas(width, height);
+  } else if (typeof document !== 'undefined') {
+    canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+  } else {
+    return null;
+  }
+  const smallCtx = canvas.getContext('2d') as
+    OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D | null;
+  if (smallCtx === null) return null;
+  smallCtx.imageSmoothingEnabled = true;
+  smallCtx.imageSmoothingQuality = 'high';
+  smallCtx.drawImage(photo, 0, 0, width, height);
+  return canvas;
 }
 
 /**
@@ -625,7 +741,8 @@ export function renderEtsyHero(ctx: Context, input: EtsyHeroInput): void {
     ctx,
     input.photo,
     { x: 0, y: 0, width, height },
-    input.photoPlacement
+    input.photoPlacement,
+    input.photoBackdrop ?? DEFAULT_PHOTO_BACKDROP
   );
 
   // Title bar.
@@ -827,7 +944,13 @@ export function renderInstagramPost(
   ctx.save();
   roundedRectPath(ctx, photoBox, IG_PHOTO_RADIUS);
   ctx.clip();
-  drawPhoto(ctx, input.photo, photoBox, input.photoPlacement);
+  drawPhoto(
+    ctx,
+    input.photo,
+    photoBox,
+    input.photoPlacement,
+    input.photoBackdrop ?? DEFAULT_PHOTO_BACKDROP
+  );
   ctx.restore();
 
   // Bottom band.

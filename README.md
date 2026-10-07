@@ -120,6 +120,10 @@ renderInstagramPost(
 );
 ```
 
+Zoomed out (e.g. `fitZoom()`, "fit whole photo"), the frame around the photo
+is white. Pass `photoBackdrop: 'blur'` on either template to fill it with a
+blurred copy of the photo instead.
+
 **export**: a JPG under 1 MB, at 2000 px on the short side.
 
 ```ts
