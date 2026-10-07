@@ -19,9 +19,15 @@ import {
   layoutWatermarks,
   MAX_PHOTO_ZOOM,
   panPhoto,
+  PHOTO_BACKDROP_BLUR_FRACTION,
+  photoBackdropBlurRadius,
+  photoBackdropRect,
   photoFrame,
   placePhoto,
+  renderEtsyHero,
+  renderInstagramPost,
   zoomPhoto,
+  type ImageSource,
 } from './render';
 
 const BOX = { x: 100, y: 50, width: 400, height: 300 };
@@ -359,5 +365,104 @@ void describe('machine render placement', () => {
         .scale,
       MAX_MACHINE_SCALE
     );
+  });
+});
+
+void describe('photo backdrop', () => {
+  const frame = { x: 0, y: 0, width: 400, height: 300 };
+
+  void it('blurs by a fraction of the longer side, at least 1px', () => {
+    assert.equal(
+      photoBackdropBlurRadius(frame),
+      400 * PHOTO_BACKDROP_BLUR_FRACTION
+    );
+    assert.equal(
+      photoBackdropBlurRadius({ x: 0, y: 0, width: 4, height: 2 }),
+      1
+    );
+  });
+
+  void it('covers the frame plus twice the blur radius on every side', () => {
+    // A 2:1 photo covering a 440×340 box (400×300 grown by 20 each side).
+    assert.deepEqual(
+      photoBackdropRect({ width: 2000, height: 1000 }, frame, 10),
+      {
+        x: -140,
+        y: -20,
+        width: 680,
+        height: 340,
+      }
+    );
+  });
+
+  /** Records drawImage calls and the filter in force for each one. */
+  function recordingContext(): {
+    ctx: CanvasRenderingContext2D;
+    draws: { source: unknown; filter: string }[];
+  } {
+    const draws: { source: unknown; filter: string }[] = [];
+    const state: Record<string | symbol, unknown> = { filter: 'none' };
+    const ctx = new Proxy(state, {
+      get(target, key) {
+        if (key in target) return target[key];
+        if (key === 'drawImage')
+          return (source: unknown) =>
+            draws.push({ source, filter: String(target['filter']) });
+        if (key === 'measureText') return () => ({ width: 10 });
+        if (key === 'createLinearGradient')
+          return () => ({ addColorStop: () => undefined });
+        return () => undefined;
+      },
+      set(target, key, value) {
+        target[key] = value;
+        return true;
+      },
+    }) as unknown as CanvasRenderingContext2D;
+    return { ctx, draws };
+  }
+
+  const photo = { width: 1600, height: 600 } as unknown as ImageSource;
+  const fit = { zoom: 0.5, panX: 0, panY: 0 };
+
+  void it('draws only the photo by default (white backdrop)', () => {
+    const { ctx, draws } = recordingContext();
+    renderInstagramPost(
+      ctx,
+      {
+        photo,
+        photoPlacement: fit,
+        headline: 'Jig',
+        subtitle: '',
+        priceText: '',
+        shopName: '',
+        badgeText: '',
+        logo: null,
+      },
+      'square'
+    );
+    assert.deepEqual(draws, [{ source: photo, filter: 'none' }]);
+  });
+
+  void it('draws a blurred copy under the photo for "blur"', () => {
+    const { ctx, draws } = recordingContext();
+    renderEtsyHero(ctx, {
+      photo,
+      photoPlacement: fit,
+      photoBackdrop: 'blur',
+      headline: 'Jig',
+      machineImage: null,
+      machinePlacement: { scale: 1, offsetX: 0, offsetY: 0 },
+      machineLabel: '',
+      watermarks: [],
+      watermarkCorner: 'bottom-right',
+      titleFont: { family: 'serif', weight: 700 },
+    });
+    assert.deepEqual(draws, [
+      {
+        source: photo,
+        filter: `blur(${4000 * PHOTO_BACKDROP_BLUR_FRACTION}px)`,
+      },
+      { source: photo, filter: 'none' },
+    ]);
   });
 });
