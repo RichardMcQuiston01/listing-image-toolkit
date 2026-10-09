@@ -15,6 +15,8 @@ import {
   INSTAGRAM_POST_SIZES,
   fitRect,
   fitZoom,
+  MIN_PHOTO_ZOOM,
+  minPhotoZoom,
   instagramPhotoBox,
   layoutWatermarks,
   MAX_PHOTO_ZOOM,
@@ -202,10 +204,24 @@ void describe('photo placement', () => {
     assert.equal(rect.y, -60);
   });
 
-  void it('clamps zoom between "fit" and the maximum', () => {
+  void it('lets the photo shrink below "fit", down to MIN_PHOTO_ZOOM', () => {
+    near(minPhotoZoom(photo, frame), MIN_PHOTO_ZOOM);
+    // A photo the frame's shape still shrinks to a quarter of "fill".
+    near(minPhotoZoom({ width: 600, height: 300 }, frame), MIN_PHOTO_ZOOM);
+    // A panorama needs less than that just to fit whole, so fit wins.
+    const panorama = { width: 4000, height: 200 };
+    near(minPhotoZoom(panorama, frame), fitZoom(panorama, frame));
+    assert.ok(fitZoom(panorama, frame) < MIN_PHOTO_ZOOM);
+  });
+
+  void it('clamps zoom between the minimum and the maximum', () => {
     near(
       clampPlacement({ zoom: 0.1, panX: 0, panY: 0 }, photo, frame).zoom,
-      2 / 3
+      MIN_PHOTO_ZOOM
+    );
+    near(
+      clampPlacement({ zoom: 0.5, panX: 0, panY: 0 }, photo, frame).zoom,
+      0.5
     );
     assert.equal(
       clampPlacement({ zoom: 99, panX: 0, panY: 0 }, photo, frame).zoom,
@@ -269,7 +285,10 @@ void describe('photo placement', () => {
       zoomPhoto(DEFAULT_PHOTO_PLACEMENT, 100, photo, frame).zoom,
       MAX_PHOTO_ZOOM
     );
-    near(zoomPhoto(DEFAULT_PHOTO_PLACEMENT, 0.01, photo, frame).zoom, 2 / 3);
+    near(
+      zoomPhoto(DEFAULT_PHOTO_PLACEMENT, 0.01, photo, frame).zoom,
+      MIN_PHOTO_ZOOM
+    );
   });
 
   void it('frames the photo on the whole hero, and in the photo box on Instagram', () => {
