@@ -87,6 +87,12 @@ export const DEFAULT_MACHINE_PLACEMENT: MachineRenderPlacement = {
 export const MIN_MACHINE_SCALE = 0.25;
 export const MAX_MACHINE_SCALE = 2.5;
 export const MAX_PHOTO_ZOOM = 4;
+/**
+ * The smallest zoom (a fraction of "fill the frame") a photo may shrink to,
+ * unless fitting the whole photo needs less. Leaves room around a product
+ * that already fills its photo; the backdrop fills the rest of the frame.
+ */
+export const MIN_PHOTO_ZOOM = 0.25;
 
 export interface EtsyHeroInput {
   readonly photo: ImageSource | null;
@@ -262,6 +268,15 @@ export function fitZoom(source: CanvasSize, box: Rect): number {
   return containScale / coverScale;
 }
 
+/**
+ * The smallest zoom allowed for a photo in `box`: MIN_PHOTO_ZOOM, or the
+ * zoom that fits the whole photo when that is smaller (a very wide or tall
+ * photo), so "Fit whole photo" is always reachable.
+ */
+export function minPhotoZoom(source: CanvasSize, box: Rect): number {
+  return Math.min(MIN_PHOTO_ZOOM, fitZoom(source, box));
+}
+
 /** Where to draw a photo of size `source` in `box` for a placement. */
 export function placePhoto(
   source: CanvasSize,
@@ -316,8 +331,7 @@ export function photoBackdropRect(
 }
 
 /**
- * Keeps a placement usable: zoom between "fit whole photo" and
- * MAX_PHOTO_ZOOM, and the photo's centre within reach. Zoomed out, the centre
+ * Keeps a placement usable: zoom between minPhotoZoom and MAX_PHOTO_ZOOM, and the photo's centre within reach. Zoomed out, the centre
  * may go as far as the frame's edge; zoomed in, far enough to bring any part
  * of the photo to the centre of the frame.
  */
@@ -328,7 +342,7 @@ export function clampPlacement(
 ): PhotoPlacement {
   const zoom: number = Math.min(
     MAX_PHOTO_ZOOM,
-    Math.max(fitZoom(source, box), placement.zoom)
+    Math.max(minPhotoZoom(source, box), placement.zoom)
   );
   const drawn: Rect = placePhoto(source, box, { zoom, panX: 0, panY: 0 });
   const limitX: number = Math.max(0.5, drawn.width / box.width / 2);
@@ -375,7 +389,7 @@ export function zoomPhoto(
 ): PhotoPlacement {
   const zoom: number = Math.min(
     MAX_PHOTO_ZOOM,
-    Math.max(fitZoom(source, box), placement.zoom * factor)
+    Math.max(minPhotoZoom(source, box), placement.zoom * factor)
   );
   const ratio: number = zoom / placement.zoom;
   const centreX: number = box.x + box.width / 2;
