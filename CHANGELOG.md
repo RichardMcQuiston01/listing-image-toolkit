@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.3.1
+
+### Patch Changes
+
+- Add a `funding` link to `package.json`, so `npm fund` and the npm package page show the donation link.
+
 ## 0.3.0
 
 ### Minor Changes
