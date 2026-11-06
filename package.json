@@ -1,6 +1,6 @@
 {
   "name": "@richardmcquiston01/listing-image-toolkit",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Browser canvas toolkit for marketplace listing images: hero and Instagram templates, photo placement, crop and thumbnail guides, background removal, PSD layer import, and size-optimised export. Runs entirely client-side.",
   "keywords": [
     "canvas",
@@ -29,7 +29,7 @@
   },
   "funding": {
     "type": "individual",
-    "url": "https://donate.stripe.com/00w5kD3Gj1Xo9v7gVOcs800"
+    "url": "https://ko-fi.com/P1V529Z7ZP"
   },
   "type": "module",
   "sideEffects": false,
